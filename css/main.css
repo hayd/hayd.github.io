@@ -49,6 +49,8 @@ a:visited { color: #a0a; }
   font-size: 80%;
 }
 
+
+/* Andy hack */
 .github, .twitter, .stack {
   a:link{color:inherit};
   a:active{color:inherit};
@@ -64,6 +66,10 @@ a:visited { color: #a0a; }
 }
 .stack:hover {
   color:orange;
+}
+
+img {
+  margin: 10px;
 }
 
 /*****************************************************************************/
