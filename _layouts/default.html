@@ -36,15 +36,15 @@
   <body>
 
     <div class="container">
-      <div class="two columns alpha">
-        {% include footer.html %}
-      </div>
-
-      <div class="thirteen columns offset-by-one omega">
+      <div class="thirteen columns alpha">
         <div class="site">
           {% include header.html %}
           {{ content }}
         </div>
+      </div>
+
+      <div class="two columns offset-by-one omega">
+        {% include footer.html %}
       </div>
     </div>
   </body>

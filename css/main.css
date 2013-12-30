@@ -135,11 +135,17 @@ img {
   padding-top: 20%;
   width: 100%;
   font-size: 80%;
+
+  position: relative;
+
 }
 */
 .footer .contact {
   /*float: left; */
   margin-right: 3em;
+
+  position: fixed;
+
 }
 
 .footer .contact a {
@@ -166,7 +172,7 @@ img {
 .post pre {
   border: 1px solid #ddd;
   background-color: #eef;
-  padding: 0 .4em;
+  padding: 0.4em;
 
   font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New;
   overflow: auto;
