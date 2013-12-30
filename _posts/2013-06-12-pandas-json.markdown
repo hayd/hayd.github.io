@@ -5,7 +5,7 @@ date:   2013-06-12 22:05:17
 categories: python pandas json
 ---
 
-New pandas 0.12 release, is a [`read_json`](http://pandas.pydata.org/pandas-docs/dev/generated/pandas.io.json.read_json.html) function (which uses the speedy [ujson](https://pypi.python.org/pypi/ujson) under the hood).
+New to pandas 0.12 release, is a [`read_json`](http://pandas.pydata.org/pandas-docs/dev/generated/pandas.io.json.read_json.html) function (which uses the speedy [ujson](https://pypi.python.org/pypi/ujson) under the hood).
 
 It's as easy as whacking in the path/url/string of a [valid](http://jsonlint.com/) json:
 
@@ -145,4 +145,4 @@ CPU times: user 4.78 s, sys: 684 ms, total: 5.46 s
 Wall time: 5.89 s
 {% endhighlight %}
 	
-Thats to [wesm](https://github.com/wesm), [jreback](https://github.com/jreback) and [Komnomnomnom](https://github.com/Komnomnomnom) for putting it together.
+Thanks to [wesm](https://github.com/wesm), [jreback](https://github.com/jreback) and [Komnomnomnom](https://github.com/Komnomnomnom) for putting it together.
