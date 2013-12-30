@@ -88,6 +88,10 @@ img {
   position:relative;
 }
 
+.header {
+  margin-bottom: .5em;
+}
+
 .header a {
   font-weight: bold;
   text-decoration: none;
@@ -132,7 +136,7 @@ img {
 */
 
 .footer {
-  padding-top: 20%;
+  padding-top: 5em;
   width: 100%;
   font-size: 80%;
 
