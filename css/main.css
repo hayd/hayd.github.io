@@ -155,6 +155,8 @@ img {
   border: 1px solid #ddd;
   background-color: #eef;
   padding: 0 .4em;
+
+  overflow: auto;
 }
 
 .post ul, .post ol {
@@ -169,6 +171,8 @@ img {
 
 .post pre code {
   border: none;
+
+  overflow: auto;
 }
 
 /* terminal */
