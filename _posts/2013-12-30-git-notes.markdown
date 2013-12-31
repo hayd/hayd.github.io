@@ -1,0 +1,156 @@
+---
+layout: post
+title:  "More git notes"
+date:   2013-12-30 22:05:17
+categories: git
+---
+
+
+I've already blogged about a rebasing git workflow, but I wanted to be more concise (it's still long!) and perhaps more useful.
+
+> Eventually you’ll discover the Easter egg in Git: __all meaningful operations can be expressed in terms of the rebase command__. Once you figure that out it all makes sense. I thought the joke would be obvious: rebase, freebase, as in what was Linus smoking? -- [**Linus Torvalds**](http://typicalprogrammer.com/linus-torvalds-goes-off-on-linux-and-git/)
+
+## git config
+
+Here's some shortcuts I've added to my `.gitconfig`, and I'll use them throughout this post:
+
+{% highlight sh %}
+[color]
+    ui = true
+[alias]
+  r = rebase
+  f = fetch
+  ff = merge --ff-only
+  co = checkout
+  c = commit
+  a = add
+  p = push
+  s = status
+  b = branch
+  h = log --pretty=format:\"%h %ad | %s%d [%an]\" --graph --date=short
+
+  # for even more convenience
+  op = push origin
+  uf = fetch upstream
+  uffm = merge --ff-only upstream/master
+
+[remote "upstream"]
+  fetch = +refs/heads/*:refs/remotes/upstream/*
+  fetch = +refs/pull/*/head:refs/remotes/upstream/pr/*
+{% endhighlight %}
+
+## fetch upstream
+
+Keep up to date with upstream, and backup your local copy of master (which is **always** just a mirror of `upstream/master` from the last update). You do this to your master branch as follow:
+
+{% highlight sh %}
+git f upstream
+git ff upstream/master
+git p origin master
+{% endhighlight %}
+
+Actually I've a shell alias `gum` which has this wrapped in git stash and apply; that is, it stores your work (without you needing to commit), while it updates local master then puts you back on the branch you were previously working on and restores your work:
+
+{% highlight sh %}
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD); git co master; git f upstream; git p origin master; git ff upstream/master; git co $OLD; unset CURRENT_BRANCH
+{% endhighlight %}
+
+## rebase your current work
+
+Once you've updated master, you'll want to rebase your current work. You going to want to commit before doing this, or if you'd prefer stash, rebase, stash apply:
+
+{% highlight sh %}
+git r master
+{% endhighlight %}
+
+## committing code
+
+Once you've updated master, you can start, or get back to, work:
+
+- NEVER commit to master locally (at least try not to, see below)
+
+Work on a *new* branch off of master, give it a nice descriptive name (not like `feature_A`!):
+
+{% highlight sh %}
+git co -b feature_A
+{% endhighlight %}
+
+Or rebase what you've previously been doing (to minimise pain of stepping this code again later), you should either commit what you've been doing first, or stash, rebase and stash apply:
+
+{% highlight sh %}
+git a -A
+git c -m 'add feature A'
+git r master
+
+git stash
+git r master
+git stash apply
+{% endhighlight %}
+
+*You may get merge conflicts here, but you'd have got them anyway if you'd tried to merge. The more frequently you rebase the less painful this process is (as you're only having to walk over the most recent code).*
+
+## oh no, I've committed to master
+
+No problem (don't push though!), first we'll make a "back up" of master (including your latest commits):
+
+{% highlight sh %}
+git co -b feature_b
+{% endhighlight %}
+
+Finish off whatever it is you were doing, and leave the working directory clean (i.e. commit everything), and make sure it has the work you've just been doing. Now you can go ahead and fix up your copy of master (remembering it should just that, a copy of master).
+
+As, your commits are safely in the new branch (seriously, double check this), so we can just back up a few commits and then update from upstream:
+
+{% highlight sh %}
+git co master
+git reset --hard HEAD~1  # if more than one commit, replace with a larger number
+git ff upstream/master
+{% endhighlight %}
+
+If you'd pushed to origin, you're going to have to force push next time.
+
+## pushing to origin
+
+With the rebasing model you're going to have to force push occasionally (each time you rebase):
+
+{% highlight sh %}
+git f origin feature_A
+git f origin feature_A --force  # if you've done a rebase
+{% endhighlight %}
+
+But, NEVER force push to upstream/master (this is a recipe for disaster), although if other people are following this model the red flag will be raised the next time they update master and fail to fast forward...
+
+## squishing commits
+
+Git history is NOT supposed to be a meandering record of your thoughts and misadventures, it should be a block of work to implement a new feature or fix a bug. If it's taken 20 commits to implement a feature and you've been going back and forth on the same lines... resolving merge conflicts is going to be hell (for you and other developers).
+
+Squish it down to several commits (or ideally one!) using "interactive" rebase:
+
+If you're new to squishing I recommend taking a backup branch:
+
+{% highlight sh %}
+git co -b feature_A_backup
+git co feature_A
+{% endhighlight %}
+
+
+{% highlight sh %}
+git h  # check the history, and count how many commits to squish
+git r -i HEAD~4 # replace 4 with number to squish
+{% endhighlight %}
+
+In the interactive buffer (make sure at least the first commit is left as pick) and replace `pick` with `s` (squish), and save. Now you have another chance to clean up the commit messages for others who might be reading them.
+
+## checking out pull request locally
+
+With the above git config you can play around / test [pull requests locally very easily[https://help.github.com/articles/checking-out-pull-requests-locally]. If the oull request was number 1234:
+
+{% highlight sh %}
+git co pr/1234
+{% endhighlight %}
+
+If you want to make changes to it, you can create a new branch off of it locally:
+
+{% highlight sh %}
+git co -b more_on_pr_1234
+{% endhighlight %}
