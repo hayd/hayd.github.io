@@ -143,7 +143,7 @@ In the interactive buffer (make sure at least the first commit is left as pick) 
 
 ## checking out pull request locally
 
-With the above git config you can play around / test [pull requests locally very easily[https://help.github.com/articles/checking-out-pull-requests-locally]. If the oull request was number 1234:
+With the above git config you can play around / test [pull requests locally very easily](https://help.github.com/articles/checking-out-pull-requests-locally). If the oull request was number 1234:
 
 {% highlight sh %}
 git co pr/1234
