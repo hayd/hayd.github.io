@@ -1,0 +1,183 @@
+---
+layout: post
+title:  "Musings on porting to python 3"
+date:   2015-08-13 12:05:17
+categories: python3 python
+
+---
+
+# Musings on porting to python 3
+
+Recently I saw a couple of talks at my
+[local python meetup](http://www.meetup.com/sfpython/events/223848989)
+about porting to python 3.
+
+I already have some experience with this, I think I've probably ported a dozen
+or so open-source libraries, and some proprietary ones too. The most notable
+is [pattern](https://github.com/pattern3/pattern) (although these changes are
+yet to make it upstream it works and the majority of the tests pass).
+
+Andrey hit the nail on the head: futurize makes porting much easier
+(to support both python 2 and 3). In this post I'm going to describe how
+I go about starting to port.
+
+Aside: Reasons you might want to port (and support both 2 and 3):
+
+- OSs moving towards python3, python 3 "nearing" EOL.
+- Libraries are more frequently supporting both python 2 and python 3, you
+  can too!
+- Once you've ported you can (if you like, and don't mind dropping python2)
+  use the (kick-ass) new features of python 3...
+- Writing code which runs on python 2 and 3 is quite easy, make it a habit
+  to save future pain (even if some python 2 code remains).
+
+## Futurize
+
+I **love** Stage 1 (basically print statements, exception syntax changes), it
+works perfectly. This takes out a huge amount of the monotony of porting. The
+diff is usually pretty simple (print statements and the like), commit here.
+
+The remaining changes are (mostly):
+
+- imports (e.g. SimpleHttp becomes http.server)
+- basestring, IntTypes etc. (usually this is pretty trivial)
+- unicode (this is the biggy)
+- implementation specific code (aka bugs ??) e.g. code which depends on order
+  of dictionary iteration (these can be really doozies, but usually they are
+  no *tooo* bad.
+- tabs and spaces (boo to not abiding by pep8; python 2 doesn't care, python 3
+  will make you jog on). I like to use `autopep8 --select=E101,E121`.
+
+Now, you can use Stage 2, but I'm not such a fan. The changes can drastically
+change performance, for example\*\*:
+
+```py
+for i in map(f, lst)
+# becomes
+for i in list(map(f, lst))
+```
+
+In python 3 this creates an unnecessary intermediary list (O(N) space + time),
+as it does on python 2 (the list constructor creates a copy). These performance
+issues can add up quite easily.
+
+\*\* To be fair, potentially this is a bug in futurize...
+
+## Manually
+
+An alternative is to do the latter yourself.
+
+### Tweaking imports
+
+Check you're using the latest library (see what doesn't import).
+
+```py
+import HttpServer
+
+# becomes
+
+try:
+    import http.server as server
+except ImportError:
+    import SimpleHTTPServer as server
+```
+
+Note: python 3 imports should always be first.
+
+Checkout the [porting guide](http://python3porting.com/stdlib.html) for
+equivalent imports.
+
+Aside: I disagree with one comment there:
+
+```py
+try:
+    from io import StringIO
+except ImportError:
+    from cStringIO import StringIO
+```
+
+is subtly different (on python 2.7) to
+
+```py
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
+```
+
+with its handling of unicode/bytes. You should prefer the former even though
+it goes against the convention that python3 imports first (the exception to
+the rule).
+
+After this stage you should be able to compile your code / get the tests
+running (they'll fail for sure).
+
+### basestring, IntTypes
+
+If you decide to not to use six, `basestring = (str, bytes)` is all you need...
+[Dive into python](http://www.diveintopython3.net/porting-code-to-python-3-with-2to3.html#basestring)
+suggests simply using `str` but you may uncover bugs in your program when
+doing this (which may or may not be a good thing).
+
+Often uses of these things are smells in code, and this can be an opportunity
+to make things "more pythonic" - by type-checking less.
+
+However, if your codebase makes lots of use of `basestring`, `unicode` etc.
+consider using [`six`](https://pythonhosted.org/six/). It's just awful when every project reimplements compat...
+with a slightly different set of bugs!)
+
+### Implementation specific code
+
+This is *the worst*. There's no getting around thinking here.
+
+It's easy to write code which depends on CPython2 implementation details
+(outside the scope of the language specification).
+
+One example of this which comes to mind is the ordering of sets/dictionaries.
+CPython2 orders lexigraphically-ish... if you passed in just ints or strings
+it would iterate in order.
+
+This could be seen as tests which rely on this. I've seen this a few times
+which some internal datastructure was actually a list (produced by iterating
+over a dict).
+
+This seems kinda crazy, and it's not going to be found by a tool (IMO).
+
+## Run the tests see what breaks
+
+I wrote a script which allows you extract, from the piped the output of
+nosetests, the next "hit list" of test failures (ordered by the ones which
+are seen the most freqently). The
+[gist is available here](https://gist.github.com/hayd/c9246c15652e5eb3b90b).
+
+The idea is to run nosetests (potentially with different arguments):
+
+```sh
+nosetests 2> nose_output.log
+```
+
+Note: The 2> here means that it's the stderr which is being piped to the file.
+
+Now when I run `common_test_failures.py` I see the most often reasons for
+failure.
+
+```
+331 NameError: name 'basestring' is not defined
+  6 TypeError: 'int' object is not callable
+  2 Error: In VirtualCamera()
+```
+
+In this case, I should look at where basestring needs to be defined (by looking
+at a specific traceback in `nose_output.log`). Maybe I'll also try and fix the
+int object being callable.
+
+Then I'll rerun the tests ([do the same thing over and over until I get
+a different result](http://i.imgur.com/FgIhXIm.png) - the tests pass)!
+
+```sh
+rm nose_output.log
+nosetests 2> nose_output.log
+```
+
+*Perhaps I'm a sadist...*
+
