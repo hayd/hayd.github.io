@@ -10,15 +10,18 @@ categories: python3 python
 
 Recently I saw a couple of talks at my
 [local python meetup](http://www.meetup.com/sfpython/events/223848989)
-about porting to python 3.
+about porting to python 3. I wanted to describe my process for porting:
 
-I already have some experience with this, I think I've probably ported a dozen
+*I already have some experience with this, I think I've probably ported a dozen
 or so open-source libraries, and some proprietary ones too. The most notable
 is [pattern](https://github.com/pattern3/pattern) (although these changes are
-yet to make it upstream it works and the majority of the tests pass).
+yet to make it upstream it works and the majority of the tests pass).*
 
-Andrey hit the nail on the head: futurize makes porting much easier
-(to support both python 2 and 3). In this post I'm going to describe how
+Andrey hit the nail on the head in his talk: futurize makes porting much easier
+(it removes much of the monotonous changes, e.g. `print_function` and
+`absolute_import`), support both python 2 and 3).
+
+In this post I'm going to describe how
 I go about starting to port.
 
 Aside: Reasons you might want to port (and support both 2 and 3):
@@ -35,7 +38,9 @@ Aside: Reasons you might want to port (and support both 2 and 3):
 
 I **love** Stage 1 (basically print statements, exception syntax changes), it
 works perfectly. This takes out a huge amount of the monotony of porting. The
-diff is usually pretty simple (print statements and the like), commit here.
+diff is usually pretty simple (print statements and the like).
+
+Sanity check the diff and run the test suite (on python 2) and commit here.
 
 The remaining changes are (mostly):
 
@@ -48,8 +53,9 @@ The remaining changes are (mostly):
 - tabs and spaces (boo to not abiding by pep8; python 2 doesn't care, python 3
   will make you jog on). I like to use `autopep8 --select=E101,E121`.
 
-Now, you can use Stage 2, but I'm not such a fan. The changes can drastically
-change performance, for example\*\*:
+Stage 2 deals with many of these, but I'm not such a fan. The changes can
+drastically change performance (and make some poor style/readability choices),
+for example\*\*:
 
 ```py
 for i in map(f, lst)
@@ -58,14 +64,20 @@ for i in list(map(f, lst))
 ```
 
 In python 3 this creates an unnecessary intermediary list (O(N) space + time),
-as it does on python 2 (the list constructor creates a copy). These performance
-issues can add up quite easily.
+as it does on python 2 (the list constructor creates a copy, neat huh?).
+These performance issues can add up quite easily when chaining.
 
 \*\* To be fair, potentially this is a bug in futurize...
 
 ## Manually
 
-An alternative is to do the latter yourself.
+An alternative is to do the "stage 2" yourself. So once I've used stage 1,
+fix the tabs and spaces I jump write it. Usually by running the tests and
+seeing what's broken...
+
+Most of the time the tests won't even start as there is an import error. The
+first objective is to get all the tests *running* (and most likely failing)
+in python 3 (no syntax errors, all imports work, no NameErrors).
 
 ### Tweaking imports
 
@@ -83,6 +95,9 @@ except ImportError:
 ```
 
 Note: python 3 imports should always be first.
+
+Then you have to go through your code and switch out references to
+SimpleHTTPServer, this is usually trivial.
 
 Checkout the [porting guide](http://python3porting.com/stdlib.html) for
 equivalent imports.
@@ -110,7 +125,7 @@ it goes against the convention that python3 imports first (the exception to
 the rule).
 
 After this stage you should be able to compile your code / get the tests
-running (they'll fail for sure).
+running (they'll still fail for sure).
 
 ### basestring, IntTypes
 
@@ -144,6 +159,9 @@ over a dict).
 This seems kinda crazy, and it's not going to be found by a tool (IMO).
 
 ## Run the tests see what breaks
+
+Note: It's important that throughout this process tests still pass in python2.
+That's your baseline (it's not *completely* broken).
 
 I wrote a script which allows you extract, from the piped the output of
 nosetests, the next "hit list" of test failures (ordered by the ones which
